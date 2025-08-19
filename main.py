@@ -1,44 +1,51 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import List
-import uuid, datetime, json
+from fastapi import FastAPI, Form
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
-app = FastAPI(title="Neksəs Prototype API")
+app = FastAPI()
 
-class CompanyData(BaseModel):
-    company_name: str
-    vat_number: str
-    email: str
-    selected_psp: List[str]
+# Middleware CORS per test web
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/")
-def home():
-    return {"message": "Benvenuto in Neksəs Prototype API"}
+@app.get("/", response_class=HTMLResponse)
+async def home():
+    with open("form.html", "r", encoding="utf-8") as f:
+        return f.read()
 
-@app.post("/activate")
-async def activate(data: CompanyData):
-    contract_id = str(uuid.uuid4())
-    timestamp = datetime.datetime.utcnow().isoformat()
-
-    smart_contract = {
-        "contract_id": contract_id,
-        "company_name": data.company_name,
-        "vat_number": data.vat_number,
-        "email": data.email,
-        "selected_psp": data.selected_psp,
-        "timestamp": timestamp,
-        "terms": "L’azienda autorizza il routing dei pagamenti tramite i PSP selezionati."
-    }
-
-    contract_file = f"contract_{contract_id}.json"
-    with open(contract_file, "w") as f:
-        json.dump(smart_contract, f, indent=2)
-
-    for psp in data.selected_psp:
-        print(f"Trasmissione sicura dati a PSP: {psp}")
-
+@app.post("/register")
+async def register(
+    nome_azienda: str = Form(...),
+    codice_fiscale: str = Form(...),
+    partita_iva: str = Form(...),
+    iban: str = Form(...),
+    stripe: bool = Form(False),
+    paypal: bool = Form(False),
+    nexi: bool = Form(False),
+    sumup: bool = Form(False),
+    contract: bool = Form(...)
+):
     return {
-        "status": "success",
-        "message": "Contratto creato e inviato ai PSP selezionati.",
-        "contract_id": contract_id
+        "message": "Dati ricevuti",
+        "azienda": nome_azienda,
+        "cf": codice_fiscale,
+        "iva": partita_iva,
+        "iban": iban,
+        "psp": {
+            "stripe": stripe,
+            "paypal": paypal,
+            "nexi": nexi,
+            "sumup": sumup
+        },
+        "contratto_accettato": contract
     }
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=10000, reload=True)
