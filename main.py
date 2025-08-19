@@ -43,6 +43,7 @@ async def register(
             "paypal": paypal,
             "nexi": nexi,
             "sumup": sumup
+            "adyen": adyen
         },
         "contratto_accettato": contract
     }
